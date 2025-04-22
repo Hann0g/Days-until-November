@@ -1,0 +1,17 @@
+/* Position the button in the top-left corner */
+#darkModeToggle {
+    position: fixed; /* Stays in place when scrolling */
+    top: 10px;
+    left: 10px;
+    background: transparent;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    z-index: 1000; /* Ensures it stays above other content */
+    padding: 5px;
+}
+
+/* Remove button focus outline (optional) */
+#darkModeToggle:focus {
+    outline: none;
+}
