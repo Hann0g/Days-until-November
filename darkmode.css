@@ -11,7 +11,3 @@
     padding: 5px;
 }
 
-/* Remove button focus outline (optional) */
-#darkModeToggle:focus {
-    outline: none;
-}
