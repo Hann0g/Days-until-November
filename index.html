@@ -243,7 +243,7 @@
 
     <div class="habit-tracker">
         <h2>Japanese Study Tracker</h2>
-        <p>Days until November 24: <span id="total-days">212</span> | Days remaining: <span id="days-remaining">212</span></p>
+        <p>Total Days: <span id="total-days">212</span> | Days Remaining: <span id="days-remaining">212</span></p>
         
         <div class="habit-stats">
             <div class="stat-box">
@@ -272,7 +272,6 @@
         const darkModeToggle = document.getElementById('darkModeToggle');
         const body = document.body;
 
-        // Check for saved user preference
         if (localStorage.getItem('darkMode') === 'enabled') {
             body.classList.add('dark-mode');
             darkModeToggle.textContent = '☀️';
@@ -331,7 +330,7 @@
         }
 
         // Habit Tracker Functionality
-        function initializeHabitTracker(totalDays) {
+        function initializeHabitTracker(remainingDays) {
             const habitCalendar = document.getElementById('habit-calendar');
             const totalDaysEl = document.getElementById('total-days');
             const daysRemainingEl = document.getElementById('days-remaining');
@@ -340,10 +339,9 @@
             const completionRateEl = document.getElementById('completion-rate');
             const resetButton = document.getElementById('resetHabitTracker');
             
-            // Initialize with 212 days (from your countdown start point)
             const fixedTotalDays = 212;
             totalDaysEl.textContent = fixedTotalDays;
-            daysRemainingEl.textContent = totalDays;
+            daysRemainingEl.textContent = remainingDays;
             
             let habitData = JSON.parse(localStorage.getItem('japaneseHabitData')) || {
                 completed: [],
@@ -351,55 +349,47 @@
                 lastUpdate: new Date().toDateString()
             };
 
-            // Clear existing calendar
             habitCalendar.innerHTML = '';
             
-            // Create day elements for ALL days
             for (let i = 1; i <= fixedTotalDays; i++) {
                 const dayEl = document.createElement('div');
                 dayEl.className = 'habit-day';
                 dayEl.textContent = i;
                 
-                // Mark past days (days that have passed in the countdown)
-                if (i > (fixedTotalDays - totalDays)) {
+                if (i > (fixedTotalDays - remainingDays)) {
                     dayEl.classList.add('past');
                 }
                 
-                // Mark completed/missed days
                 if (habitData.completed.includes(i)) {
                     dayEl.classList.add('completed');
                 } else if (habitData.missed.includes(i)) {
                     dayEl.classList.add('missed');
                 }
                 
-                // Mark today (current day in countdown)
-                if (i === (fixedTotalDays - totalDays + 1)) {
+                if (i === (fixedTotalDays - remainingDays + 1)) {
                     dayEl.classList.add('today');
                 }
                 
                 dayEl.addEventListener('click', function() {
                     const dayNumber = parseInt(this.textContent);
-                    const currentDayIndex = fixedTotalDays - totalDays + 1;
+                    const currentDayIndex = fixedTotalDays - remainingDays + 1;
                     
-                    // Only allow tracking for past and current day
                     if (dayNumber <= currentDayIndex) {
                         if (this.classList.contains('completed')) {
-                            // Change from completed to missed
                             this.classList.remove('completed');
                             this.classList.add('missed');
                             habitData.completed = habitData.completed.filter(d => d !== dayNumber);
                             habitData.missed.push(dayNumber);
                         } else if (this.classList.contains('missed')) {
-                            // Change from missed to neither
                             this.classList.remove('missed');
                             habitData.missed = habitData.missed.filter(d => d !== dayNumber);
                         } else {
-                            // Mark as completed
                             this.classList.add('completed');
                             habitData.completed.push(dayNumber);
+                            habitData.missed = habitData.missed.filter(d => d !== dayNumber);
                         }
                         
-                        updateHabitStats(fixedTotalDays);
+                        updateHabitStats(fixedTotalDays, remainingDays);
                         localStorage.setItem('japaneseHabitData', JSON.stringify(habitData));
                     }
                 });
@@ -407,7 +397,7 @@
                 habitCalendar.appendChild(dayEl);
             }
             
-            updateHabitStats(fixedTotalDays);
+            updateHabitStats(fixedTotalDays, remainingDays);
             
             resetButton.addEventListener('click', function() {
                 if (confirm('Are you sure you want to reset your Japanese study progress?')) {
@@ -417,49 +407,42 @@
                         lastUpdate: new Date().toDateString()
                     };
                     localStorage.removeItem('japaneseHabitData');
-                    initializeHabitTracker(totalDays);
+                    initializeHabitTracker(remainingDays);
                 }
             });
             
-            function updateHabitStats(totalDays) {
+            function updateHabitStats(totalDays, remainingDays) {
                 const completed = habitData.completed.length;
                 const missed = habitData.missed.length;
-                const trackedDays = completed + missed;
+                const daysPassed = totalDays - remainingDays;
                 
                 completedDaysEl.textContent = completed;
-                daysRemainingEl.textContent = totalDays - (fixedTotalDays - totalDays);
+                daysRemainingEl.textContent = remainingDays;
                 
-                // Calculate streak (consecutive completed days up to today)
                 let streak = 0;
-                const currentDayIndex = fixedTotalDays - totalDays + 1;
-                const sortedCompleted = [...habitData.completed].sort((a, b) => a - b);
+                const currentDayIndex = totalDays - remainingDays;
                 
-                for (let i = sortedCompleted.length - 1; i >= 0; i--) {
-                    if (sortedCompleted[i] <= currentDayIndex) {
-                        if (i === sortedCompleted.length - 1 || sortedCompleted[i] === sortedCompleted[i + 1] - 1) {
-                            streak++;
-                        } else {
-                            break;
-                        }
+                for (let i = currentDayIndex; i >= 1; i--) {
+                    if (habitData.completed.includes(i)) {
+                        streak++;
+                    } else {
+                        break;
                     }
                 }
                 streakDaysEl.textContent = streak;
                 
-                // Calculate completion rate based on tracked days only
-                const completionRate = trackedDays > 0 
-                    ? Math.round((completed / trackedDays) * 100) 
+                const completionRate = daysPassed > 0 
+                    ? Math.round((completed / daysPassed) * 100) 
                     : 0;
                 completionRateEl.textContent = `${completionRate}%`;
             }
         }
         
-        // Initialize both features
         const remainingDays = updateCountdown();
         initializeHabitTracker(remainingDays);
         setInterval(() => {
             const days = updateCountdown();
-            document.getElementById('days-remaining').textContent = days;
-            initializeHabitTracker(days); // Rebuild calendar to update "today" marker
+            initializeHabitTracker(days);
         }, 1000);
     </script>
 </body>
