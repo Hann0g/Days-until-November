@@ -15,6 +15,9 @@
             --accent-color: #2c3e50;
             --date-color: #7f8c8d;
             --message-color: #3498db;
+            --habit-completed: #4CAF50;
+            --habit-missed: #e74c3c;
+            --habit-pending: #eee;
         }
 
         .dark-mode {
@@ -27,11 +30,15 @@
             --accent-color: hsl(224, 95%, 76%);
             --date-color: #a0a0a0;
             --message-color: #4e708b;
+            --habit-completed: #2e7d32;
+            --habit-missed: #c62828;
+            --habit-pending: #333;
         }
 
         body {
             font-family: 'Arial', sans-serif;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
@@ -41,7 +48,7 @@
             transition: all 0.3s ease;
         }
 
-        .countdown-container {
+        .countdown-container, .habit-tracker {
             text-align: center;
             background: var(--container-bg);
             padding: 40px;
@@ -51,9 +58,10 @@
             width: 90%;
             position: relative;
             transition: all 0.3s ease;
+            margin: 20px 0;
         }
 
-        h1 {
+        h1, h2 {
             color: var(--accent-color);
             margin-bottom: 20px;
             transition: all 0.3s ease;
@@ -117,6 +125,65 @@
             transition: all 0.3s ease;
         }
 
+        /* Habit Tracker Styles */
+        .habit-calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .habit-day {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background-color: var(--habit-pending);
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.8rem;
+        }
+
+        .habit-day.completed {
+            background-color: var(--habit-completed);
+            color: white;
+        }
+
+        .habit-day.missed {
+            background-color: var(--habit-missed);
+            color: white;
+        }
+
+        .habit-day.today {
+            border: 2px solid var(--accent-color);
+        }
+
+        .habit-stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+        }
+
+        .stat-box {
+            padding: 10px;
+            border-radius: 5px;
+            background-color: var(--box-bg);
+            color: var(--box-text);
+            min-width: 80px;
+        }
+
+        #resetHabitTracker {
+            padding: 8px 16px;
+            background-color: var(--habit-missed);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
         @media (max-width: 600px) {
             .countdown-box {
                 min-width: 60px;
@@ -129,6 +196,12 @@
             
             h1 {
                 font-size: 1.5rem;
+            }
+
+            .habit-day {
+                width: 25px;
+                height: 25px;
+                font-size: 0.7rem;
             }
         }
     </style>
@@ -159,6 +232,32 @@
         </div>
         
         <div class="message" id="message">Till Holiday!</div>
+    </div>
+
+    <div class="habit-tracker">
+        <h2>Japanese Study Tracker</h2>
+        <p>Days remaining: <span id="days-remaining">0</span></p>
+        
+        <div class="habit-stats">
+            <div class="stat-box">
+                <div class="stat-value" id="completed-days">0</div>
+                <div class="stat-label">Completed</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="streak-days">0</div>
+                <div class="stat-label">Day Streak</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="completion-rate">0%</div>
+                <div class="stat-label">Completion</div>
+            </div>
+        </div>
+        
+        <div class="habit-calendar" id="habit-calendar">
+            <!-- Days will be added by JavaScript -->
+        </div>
+        
+        <button id="resetHabitTracker">Reset Tracker</button>
     </div>
 
     <script>
@@ -220,10 +319,125 @@
                 document.getElementById('minutes').textContent = '00';
                 document.getElementById('seconds').textContent = '00';
             }
+            
+            return days; // Return remaining days for habit tracker
         }
         
-        updateCountdown();
-        setInterval(updateCountdown, 1000);
+        // Habit Tracker Functionality
+        function initializeHabitTracker(totalDays) {
+            const habitCalendar = document.getElementById('habit-calendar');
+            const daysRemainingEl = document.getElementById('days-remaining');
+            const completedDaysEl = document.getElementById('completed-days');
+            const streakDaysEl = document.getElementById('streak-days');
+            const completionRateEl = document.getElementById('completion-rate');
+            const resetButton = document.getElementById('resetHabitTracker');
+            
+            let habitData = JSON.parse(localStorage.getItem('japaneseHabitData')) || {
+                completed: [],
+                missed: [],
+                lastUpdate: null
+            };
+            
+            // Update days remaining based on countdown
+            daysRemainingEl.textContent = totalDays;
+            
+            // Clear existing calendar
+            habitCalendar.innerHTML = '';
+            
+            // Create day elements
+            for (let i = 1; i <= totalDays; i++) {
+                const dayEl = document.createElement('div');
+                dayEl.className = 'habit-day';
+                dayEl.textContent = i;
+                
+                if (habitData.completed.includes(i)) {
+                    dayEl.classList.add('completed');
+                } else if (habitData.missed.includes(i)) {
+                    dayEl.classList.add('missed');
+                }
+                
+                // Mark today if it's the current day
+                if (i === (totalDays - parseInt(daysRemainingEl.textContent) + 1)) {
+                    dayEl.classList.add('today');
+                }
+                
+                dayEl.addEventListener('click', function() {
+                    const dayNumber = parseInt(this.textContent);
+                    
+                    if (this.classList.contains('completed')) {
+                        // Change from completed to missed
+                        this.classList.remove('completed');
+                        this.classList.add('missed');
+                        habitData.completed = habitData.completed.filter(d => d !== dayNumber);
+                        habitData.missed.push(dayNumber);
+                    } else if (this.classList.contains('missed')) {
+                        // Change from missed to neither
+                        this.classList.remove('missed');
+                        habitData.missed = habitData.missed.filter(d => d !== dayNumber);
+                    } else {
+                        // Mark as completed
+                        this.classList.add('completed');
+                        habitData.completed.push(dayNumber);
+                    }
+                    
+                    // Update stats
+                    updateHabitStats(totalDays);
+                    localStorage.setItem('japaneseHabitData', JSON.stringify(habitData));
+                });
+                
+                habitCalendar.appendChild(dayEl);
+            }
+            
+            // Update stats initially
+            updateHabitStats(totalDays);
+            
+            // Reset button functionality
+            resetButton.addEventListener('click', function() {
+                if (confirm('Are you sure you want to reset your Japanese study progress?')) {
+                    habitData = {
+                        completed: [],
+                        missed: [],
+                        lastUpdate: null
+                    };
+                    localStorage.removeItem('japaneseHabitData');
+                    initializeHabitTracker(totalDays);
+                }
+            });
+            
+            function updateHabitStats(totalDays) {
+                const completed = habitData.completed.length;
+                const missed = habitData.missed.length;
+                const remaining = totalDays - completed - missed;
+                
+                daysRemainingEl.textContent = remaining;
+                completedDaysEl.textContent = completed;
+                
+                // Calculate streak
+                let streak = 0;
+                const sortedCompleted = [...habitData.completed].sort((a, b) => a - b);
+                for (let i = sortedCompleted.length - 1; i >= 0; i--) {
+                    if (i === sortedCompleted.length - 1 || sortedCompleted[i] === sortedCompleted[i + 1] - 1) {
+                        streak++;
+                    } else {
+                        break;
+                    }
+                }
+                streakDaysEl.textContent = streak;
+                
+                // Calculate completion rate
+                const completionRate = Math.round((completed / totalDays) * 100);
+                completionRateEl.textContent = `${completionRate}%`;
+            }
+        }
+        
+        // Initialize both features
+        const remainingDays = updateCountdown();
+        initializeHabitTracker(remainingDays);
+        setInterval(() => {
+            const days = updateCountdown();
+            document.getElementById('days-remaining').textContent = days - 
+                (JSON.parse(localStorage.getItem('japaneseHabitData'))?.completed.length || 0);
+        }, 1000);
     </script>
 </body>
 </html>
