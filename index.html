@@ -293,7 +293,7 @@
         function updateCountdown() {
             const now = new Date();
             let targetYear = now.getFullYear();
-            const targetDate = new Date(targetYear, 10, 24);
+            const targetDate = new Date(targetYear, 10, 24); // November is month 10 (0-indexed)
             
             if (now > targetDate) {
                 targetYear++;
@@ -349,23 +349,28 @@
                 lastUpdate: new Date().toDateString()
             };
 
+            // Clear existing calendar
             habitCalendar.innerHTML = '';
             
+            // Create day elements for ALL days
             for (let i = 1; i <= fixedTotalDays; i++) {
                 const dayEl = document.createElement('div');
                 dayEl.className = 'habit-day';
                 dayEl.textContent = i;
                 
+                // Mark past days (days that have passed in the countdown)
                 if (i > (fixedTotalDays - remainingDays)) {
                     dayEl.classList.add('past');
                 }
                 
+                // Mark completed/missed days
                 if (habitData.completed.includes(i)) {
                     dayEl.classList.add('completed');
                 } else if (habitData.missed.includes(i)) {
                     dayEl.classList.add('missed');
                 }
                 
+                // Mark today (current day in countdown)
                 if (i === (fixedTotalDays - remainingDays + 1)) {
                     dayEl.classList.add('today');
                 }
@@ -374,18 +379,23 @@
                     const dayNumber = parseInt(this.textContent);
                     const currentDayIndex = fixedTotalDays - remainingDays + 1;
                     
+                    // Only allow tracking for past and current day
                     if (dayNumber <= currentDayIndex) {
                         if (this.classList.contains('completed')) {
+                            // Change from completed to missed
                             this.classList.remove('completed');
                             this.classList.add('missed');
                             habitData.completed = habitData.completed.filter(d => d !== dayNumber);
                             habitData.missed.push(dayNumber);
                         } else if (this.classList.contains('missed')) {
+                            // Change from missed to neither
                             this.classList.remove('missed');
                             habitData.missed = habitData.missed.filter(d => d !== dayNumber);
                         } else {
+                            // Mark as completed
                             this.classList.add('completed');
                             habitData.completed.push(dayNumber);
+                            // Remove from missed if it was there
                             habitData.missed = habitData.missed.filter(d => d !== dayNumber);
                         }
                         
@@ -419,18 +429,21 @@
                 completedDaysEl.textContent = completed;
                 daysRemainingEl.textContent = remainingDays;
                 
+                // Calculate streak (consecutive completed days up to today)
                 let streak = 0;
                 const currentDayIndex = totalDays - remainingDays;
                 
-                for (let i = currentDayIndex; i >= 1; i--) {
-                    if (habitData.completed.includes(i)) {
+                // Start from today and go backward
+                for (let day = currentDayIndex; day >= 1; day--) {
+                    if (habitData.completed.includes(day)) {
                         streak++;
-                    } else {
-                        break;
+                    } else if (habitData.missed.includes(day)) {
+                        break; // Streak ends on first missed day
                     }
                 }
                 streakDaysEl.textContent = streak;
                 
+                // Calculate completion rate based on days passed
                 const completionRate = daysPassed > 0 
                     ? Math.round((completed / daysPassed) * 100) 
                     : 0;
@@ -438,6 +451,7 @@
             }
         }
         
+        // Initialize both features
         const remainingDays = updateCountdown();
         initializeHabitTracker(remainingDays);
         setInterval(() => {
